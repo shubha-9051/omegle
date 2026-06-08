@@ -48,7 +48,7 @@ export default function App() {
             </div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 9 }}>
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
