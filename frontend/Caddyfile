@@ -1,0 +1,15 @@
+
+
+
+localhost {
+    root * /srv
+    encode gzip
+
+    @backend {
+        path /socket.io/* /config /health
+    }
+    reverse_proxy @backend node-backend:3000
+
+    try_files {path} /index.html
+    file_server
+}

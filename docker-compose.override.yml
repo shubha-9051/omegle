@@ -1,0 +1,18 @@
+# docker-compose.override.yml
+# Local-only config. Compose merges this on top of docker-compose.yml
+# automatically when you run `docker compose up` (no -f flag).
+# Production deploy explicitly skips it with: docker compose -f docker-compose.yml up
+
+services:
+  caddy:
+    build:
+      context: ./frontend
+      args:
+        VITE_SERVER_URL: ""          # empty → client uses window.location.origin (https://localhost)
+        CADDYFILE: Caddyfile.local   # use the localhost Caddyfile instead of the production one
+
+  node-backend:
+    environment:
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - CLIENT_ORIGIN=https://localhost   # local origin, not your domain

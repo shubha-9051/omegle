@@ -1,0 +1,33 @@
+services:
+  caddy:
+    build:
+      context: ./frontend
+      args:
+        VITE_SERVER_URL: "https://yourdomain.com"
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - node-backend
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+  node-backend:
+    build: ./backend
+    environment:
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - CLIENT_ORIGIN=https://yourdomain.com
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  redis_data:

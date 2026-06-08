@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <h1>video chat</h1>
+    <button id="readyBtn">Ready</button>
+    <div>
+      <video id="localVideo" autoplay muted playsinline width="300"></video>
+      <video id="remoteVideo" autoplay playsinline width="300"></video>
+    </div>
+    <pre id="log"></pre>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+      const socket = io("http://localhost:3000");
+      const log = (m) => (document.getElementById("log").textContent += m + "\n");
+
+      let pc;              // the RTCPeerConnection
+      let localStream;     // our camera/mic
+      let roomId;          // assigned on match
+      let iceServers = []; // fetched from /config
+
+      // --- 1. Get config (STUN servers) on load ---
+      async function loadConfig() {
+        const res = await fetch("http://localhost:3000/config");
+        const data = await res.json();
+        iceServers = data.iceServers;
+      }
+
+      // --- 2. Get camera/mic on load ---
+      async function loadMedia() {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        document.getElementById("localVideo").srcObject = localStream;
+      }
+
+      // --- 3. Build a fresh peer connection ---
+      function createPeerConnection() {
+        pc = new RTCPeerConnection({ iceServers });
+
+        // Add our media tracks to send to the peer
+        localStream.getTracks().forEach((track) => {
+          pc.addTrack(track, localStream);
+        });
+
+        // When the peer's media arrives, show it
+        pc.ontrack = (event) => {
+          document.getElementById("remoteVideo").srcObject = event.streams[0];
+          log("remote stream attached");
+        };
+
+        // As we discover ICE candidates, send them to the peer
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("ice-candidate", { roomId, candidate: event.candidate });
+          }
+        };
+
+        pc.onconnectionstatechange = () => log("state: " + pc.connectionState);
+      }
+
+      // --- Matched: server tells us our role ---
+      socket.on("matched", async (data) => {
+        roomId = data.roomId;
+        log("MATCHED as " + data.role);
+        createPeerConnection();
+
+        if (data.role === "caller") {
+          // Caller kicks off: create and send the offer
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          socket.emit("offer", { roomId, offer });
+          log("sent offer");
+        }
+        // callee waits for the offer to arrive (handled below)
+      });
+
+      // --- Callee receives offer → answers ---
+      socket.on("offer", async ({ offer }) => {
+        await pc.setRemoteDescription(offer);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit("answer", { roomId, answer });
+        log("received offer, sent answer");
+      });
+
+      // --- Caller receives answer ---
+      socket.on("answer", async ({ answer }) => {
+        await pc.setRemoteDescription(answer);
+        log("received answer");
+      });
+
+      // --- Both receive ICE candidates ---
+      socket.on("ice-candidate", async ({ candidate }) => {
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (e) {
+          log("ice error: " + e.message);
+        }
+      });
+
+      // --- Wire up ---
+      document.getElementById("readyBtn").onclick = () => {
+        socket.emit("ready");
+        log("sent ready...");
+      };
+
+      // Load media + config before anything
+      (async () => {
+        await loadConfig();
+        await loadMedia();
+        log("ready to go — click Ready");
+      })();
+    </script>
+  </body>
+</html>
