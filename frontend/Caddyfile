@@ -1,15 +1,18 @@
-
-
-
-localhost {
-    root * /srv
+yourdomain.com {
     encode gzip
 
-    @backend {
-        path /socket.io/* /config /health
+    handle /socket.io/* {
+        reverse_proxy node-backend:3000
     }
-    reverse_proxy @backend node-backend:3000
-
-    try_files {path} /index.html
-    file_server
+    handle /config {
+        reverse_proxy node-backend:3000
+    }
+    handle /health {
+        reverse_proxy node-backend:3000
+    }
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
 }
