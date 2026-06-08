@@ -1,4 +1,4 @@
-yourdomain.com {
+hosteazy.me {
     encode gzip
 
     handle /socket.io/* {
