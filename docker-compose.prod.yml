@@ -1,9 +1,7 @@
+# docker-compose.prod.yml — used ON THE VPS, pulls prebuilt images
 services:
   caddy:
-    build:
-      context: ./frontend
-      args:
-        VITE_SERVER_URL: "https://hosteazy.me"
+    image: ghcr.io/shubha-9051/omegle-caddy:latest
     ports:
       - "80:80"
       - "443:443"
@@ -14,7 +12,7 @@ services:
       - caddy_config:/config
 
   node-backend:
-    build: ./backend
+    image: ghcr.io/shubha-9051/omegle-backend:latest
     environment:
       - PORT=3000
       - REDIS_URL=redis://redis:6379

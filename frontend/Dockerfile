@@ -9,5 +9,5 @@ RUN npm run build
 
 FROM caddy:2-alpine
 COPY --from=build /app/dist /srv
-ARG CADDYFILE=Caddyfile.local
+ARG CADDYFILE=Caddyfile
 COPY ${CADDYFILE} /etc/caddy/Caddyfile
