@@ -89,8 +89,12 @@ export function useWebRTC() {
 
       // 2. Local media
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
       });
       if (!mounted) {
         stream.getTracks().forEach((t) => t.stop());

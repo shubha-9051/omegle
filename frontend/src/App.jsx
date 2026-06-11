@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useWebRTC } from "./hooks/useWebRTC";
+import "./App.css";
 
 export default function App() {
   const {
@@ -9,6 +10,7 @@ export default function App() {
   } = useWebRTC();
 
   const [draft, setDraft] = useState("");
+  const messagesEndRef = useRef(null);
 
   const send = () => {
     if (!draft.trim()) return;
@@ -16,48 +18,79 @@ export default function App() {
     setDraft("");
   };
 
+  // Keep the chat scrolled to the latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const connected = status === "connected";
+
   return (
-    <div style={{ padding: 20 }}>
-      <h1>video chat</h1>
-      <p>status: {status}{role ? ` (${role})` : ""}</p>
+    <div className="app">
+      <header className="app-header">
+        <h1 className="app-title">video chat</h1>
+        <span className={`status status-${status}`}>
+          {status}{role ? ` · ${role}` : ""}
+        </span>
+      </header>
 
-      <button onClick={ready} disabled={status !== "idle"}>Ready</button>
-      <button onClick={next} disabled={status === "idle" || status === "waiting"}>
-        Next
-      </button>
-
-      <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-        <video ref={localVideoRef} autoPlay muted playsInline width={300} />
-        <video ref={remoteVideoRef} autoPlay playsInline width={300} />
+      <div className="controls">
+        <button className="btn btn-primary" onClick={ready} disabled={status !== "idle"}>
+          Ready
+        </button>
+        <button
+          className="btn"
+          onClick={next}
+          disabled={status === "idle" || status === "waiting"}
+        >
+          Next
+        </button>
       </div>
 
-      {/* Chat */}
-      <div style={{ marginTop: 16, maxWidth: 612 }}>
-        <div style={{
-          border: "1px solid #ccc", height: 160, overflowY: "auto",
-          padding: 8, marginBottom: 8,
-        }}>
+      <div className="stage">
+        <div className="tile">
+          <video ref={localVideoRef} className="local" autoPlay muted playsInline />
+          <span className="tile-label">You</span>
+        </div>
+        <div className="tile">
+          <video ref={remoteVideoRef} autoPlay playsInline />
+          <span className="tile-label">Stranger</span>
+          {!connected && (
+            <div className="tile-placeholder">
+              {status === "idle"
+                ? "Click Ready to start"
+                : status === "waiting"
+                ? "Looking for someone…"
+                : "Connecting…"}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="chat">
+        <div className="messages">
+          {messages.length === 0 && (
+            <div className="messages-empty">Say hi 👋</div>
+          )}
           {messages.map((m, i) => (
-            <div key={i} style={{ textAlign: m.from === "me" ? "right" : "left" }}>
-              <span style={{
-                display: "inline-block", padding: "4px 8px", borderRadius: 8,
-                background: m.from === "me" ? "#d0ebff" : "#e9ecef",
-              }}>
-                {m.text}
-              </span>
+            <div key={i} className={`msg ${m.from === "me" ? "me" : "them"}`}>
+              <span className="bubble">{m.text}</span>
             </div>
           ))}
+          <div ref={messagesEndRef} />
         </div>
-        <div style={{ display: "flex", gap: 9 }}>
+        <div className="composer">
           <input
+            className="composer-input"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="Type a message..."
-            disabled={status !== "connected"}
-            style={{ flex: 1, padding: 6 }}
+            placeholder={connected ? "Type a message…" : "Connect to start chatting"}
+            disabled={!connected}
           />
-          <button onClick={send} disabled={status !== "connected"}>Send</button>
+          <button className="btn btn-primary" onClick={send} disabled={!connected}>
+            Send
+          </button>
         </div>
       </div>
     </div>
