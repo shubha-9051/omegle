@@ -8,6 +8,7 @@ export function useWebRTC() {
   const [role, setRole] = useState(null);
 
   const [messages, setMessages] = useState([]);   // { from: 'me' | 'them', text }
+  const [reactions, setReactions] = useState([]); // { id, emoji } floating reactions
 
   const socketRef = useRef(null);
   const pcRef = useRef(null);
@@ -15,6 +16,7 @@ export function useWebRTC() {
   const roomIdRef = useRef(null);
   const iceServersRef = useRef([]);
   const pendingCandidatesRef = useRef([]);           // buffer for early ICE candidates
+  const reactionIdRef = useRef(0);                   // stable keys for floating reactions
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -27,6 +29,17 @@ export function useWebRTC() {
   // Send to partner via server
   socketRef.current.emit("chat-message", { roomId: roomIdRef.current, text: clean });
 }, []);
+
+  // Fire a floating emoji reaction — show locally and relay to partner
+  const sendReaction = useCallback((emoji) => {
+    setReactions((prev) => [...prev, { id: ++reactionIdRef.current, emoji }]);
+    socketRef.current?.emit("reaction", { roomId: roomIdRef.current, emoji });
+  }, []);
+
+  // Remove a reaction once its float animation ends
+  const removeReaction = useCallback((id) => {
+    setReactions((prev) => prev.filter((r) => r.id !== id));
+  }, []);
 
   // --- Build a fresh peer connection ---
   const createPeerConnection = useCallback(() => {
@@ -162,6 +175,10 @@ export function useWebRTC() {
   setMessages((prev) => [...prev, { from: "them", text }]);
 });
 
+  socket.on("reaction", ({ emoji }) => {
+  setReactions((prev) => [...prev, { id: ++reactionIdRef.current, emoji }]);
+});
+
     // Cleanup on unmount
     return () => {
       mounted = false;
@@ -196,5 +213,9 @@ const next = useCallback(() => {
   socketRef.current.emit("next");
 }, [closePeer]);
 
-  return { status, role, ready, localVideoRef, remoteVideoRef, next, sendMessage, messages };
+  return {
+    status, role, ready, localVideoRef, remoteVideoRef, next,
+    sendMessage, messages,
+    sendReaction, reactions, removeReaction,
+  };
 }

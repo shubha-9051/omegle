@@ -10,4 +10,10 @@ module.exports = (io, socket) => {
     // Relay to the other person in the room (not back to sender)
     socket.to(roomId).emit("chat-message", { text: clean });
   });
+
+  socket.on("reaction", ({ roomId, emoji }) => {
+    // Relay a Meet-style floating emoji reaction to the other peer.
+    if (typeof emoji !== "string" || emoji.length > 8) return; // multi-codepoint emoji ok
+    socket.to(roomId).emit("reaction", { emoji });
+  });
 };
